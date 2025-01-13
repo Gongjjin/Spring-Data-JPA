@@ -66,4 +66,14 @@ public class MemberJpaRepository {
                 .setParameter("age", age)
                 .getSingleResult();
     }
+
+    /**
+     * 벌크성 수정 쿼리
+     * ex) 모든 직원의 연봉을 10% 인상하라
+     */
+    public int bulkPlus(int age){
+        return em.createQuery("update Member m set m.age = m.age + 1" + " where m.age >= :age")
+                .setParameter("age", age)
+                .executeUpdate(); // 응답 값의 개수를 리턴하는 메소드
+    }
 }

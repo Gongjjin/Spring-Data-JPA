@@ -3,6 +3,8 @@ package SpringDataJpa.prac.repository;
 import SpringDataJpa.prac.dto.MemberDto;
 import SpringDataJpa.prac.entity.Member;
 import SpringDataJpa.prac.entity.Team;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +35,9 @@ public class MemberJpaRepositoryTest {
     MemberRepository memberRepository;
     @Autowired
     TeamRepository teamRepository;
+    @Autowired
+    @PersistenceContext
+    EntityManager em;
 
     @Test
     public void testMember(){
@@ -179,5 +184,94 @@ public class MemberJpaRepositoryTest {
 //        assertThat(page.getTotalPages()).isEqualTo(2);// 전체 페이지 수
         assertThat(page.isFirst()).isTrue();
         assertThat(page.hasNext()).isTrue();
+    }
+
+    @Test
+    public void bulkUpate(){
+        memberJpaRepository.save(new Member("member1",10));
+        memberJpaRepository.save(new Member("member2",10));
+        memberJpaRepository.save(new Member("member3",10));
+        memberJpaRepository.save(new Member("member4",22));
+        memberJpaRepository.save(new Member("member5",10));
+        memberJpaRepository.save(new Member("member6",10));
+
+        int resultCount = memberJpaRepository.bulkPlus(20);
+
+        assertThat(resultCount).isEqualTo(1);
+        em.clear();
+        /**
+         * em.clear가 필요한 이유
+         * 벌크연산을 사용하면 바로 DB의 값을 바꿔낼 수 있음. 하지만 DB의 값만이 변경된 상황이고,
+         * 영속성 컨텍스트의 값은 변경되지 않은 상태로 유지됨. 따라서 clear를 통해 영속성 컨텍스트를 깔끔히 날려주고 DB에서 값을 다시 불러오게끔 해야함
+         * data jpa에선 이걸 @Modifying으로 처리한다.
+         */
+        List<Member> result = memberJpaRepository.findByUsername("member5");
+
+
+        memberRepository.save(new Member("member1",10));
+        memberRepository.save(new Member("member2",10));
+        memberRepository.save(new Member("member3",10));
+        memberRepository.save(new Member("member4",22));
+        memberRepository.save(new Member("member5",10));
+        memberRepository.save(new Member("member6",10));
+
+        int resultCount1 = memberRepository.bulkAgePlus(20);
+        assertThat(resultCount1).isEqualTo(1);
+
+    }
+
+    @Test
+    public void findMemberLazy(){
+        //given
+        Team teamA = new Team("TeamA");
+        Team teamB = new Team("TeamB");
+
+        teamRepository.save(teamA);
+        teamRepository.save(teamB);
+
+        Member member1 = new Member("member1", 10 , teamA);
+        Member member2 = new Member("member2", 10 , teamB);
+
+        memberJpaRepository.save(member1);
+        memberJpaRepository.save(member2);
+
+        em.flush();
+        em.clear();
+
+        //when
+        List<Member> members = memberRepository.findAll();
+        for (Member member : members) {
+            System.out.println(member.getName());
+            System.out.println(member.getTeam().getClass());
+            System.out.println(member.getTeam().getName());
+        }
+    }
+
+    @Test
+    public void queryHint(){
+        Member member1 = new Member("member1", 10);
+        memberRepository.save(member1);
+        em.flush();
+        em.clear();
+
+        Member findmember = memberRepository.findReadOnlyByName("member1");
+        findmember.setName("바바바");
+
+        em.flush();
+    }
+
+    @Test
+    public void lock(){
+        Member member1 = new Member("member1", 10);
+        memberRepository.save(member1);
+        em.flush();
+        em.clear();
+
+        List<Member> result = memberRepository.findLockByName("member1");
+    }
+
+    @Test
+    public void callCustom(){
+        List<Member> result = memberRepository.findMemberCustom();
     }
 }
